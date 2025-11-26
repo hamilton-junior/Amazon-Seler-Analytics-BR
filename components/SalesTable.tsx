@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { SaleData, ShippingStatus } from '../types';
 import { formatCurrency } from '../constants';
-import { Search, X, Edit2, Check, AlertCircle, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Star, Flag, BarChart2 } from 'lucide-react';
+import { Search, X, Edit2, Check, AlertCircle, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Star, Flag, BarChart2, Layout, Settings2 } from 'lucide-react';
 
 interface SalesTableProps {
   data: SaleData[];
@@ -30,31 +31,32 @@ interface ColumnDef {
   label: string;
   minWidth: string;
   isNumeric?: boolean;
+  visible: boolean;
 }
 
 // Definição inicial das colunas reordenáveis (exclui Checkbox, Nome e Ações que são fixas)
 const INITIAL_COLUMNS: ColumnDef[] = [
-  { key: 'cidade', label: 'Cidade', minWidth: '120px' },
-  { key: 'envioStatus', label: 'Envio', minWidth: '100px' },
-  { key: 'recebimentoClienteStatus', label: 'Recebido (Cli)', minWidth: '80px' },
-  { key: 'dataVenda', label: 'Data Venda', minWidth: '100px' },
-  { key: 'dataEnvio', label: 'Data Envio', minWidth: '100px' },
-  { key: 'dataRecebimento', label: 'Data Receb.', minWidth: '100px' },
-  { key: 'recebimentoDias', label: 'Dias', minWidth: '60px', isNumeric: true },
-  { key: 'pontoEntrega', label: 'Ponto Entrega', minWidth: '100px' },
-  { key: 'codigoRastreio', label: 'Rastreio', minWidth: '120px' },
-  { key: 'valorVenda', label: 'Valor Venda', minWidth: '100px', isNumeric: true },
-  { key: 'freteRecebido', label: 'Frete Rec.', minWidth: '100px', isNumeric: true },
-  { key: 'valorVendaMaisFrete', label: 'V + F', minWidth: '100px', isNumeric: true },
-  { key: 'valorCompra', label: 'Vlr Compra', minWidth: '100px', isNumeric: true },
-  { key: 'fretePago', label: 'Frete Pago', minWidth: '100px', isNumeric: true },
-  { key: 'comissaoAmazon', label: 'Comissão', minWidth: '100px', isNumeric: true },
-  { key: 'totalCustos', label: 'Custos Tot.', minWidth: '100px', isNumeric: true },
-  { key: 'lucro', label: 'Lucro', minWidth: '100px', isNumeric: true },
-  { key: 'quantidade', label: 'Qtd', minWidth: '60px', isNumeric: true },
-  { key: 'idProduto', label: 'ID Produto', minWidth: '100px' },
-  { key: 'produto', label: 'Produto', minWidth: '200px' },
-  { key: 'observacoes', label: 'Observações', minWidth: '200px' },
+  { key: 'cidade', label: 'Cidade', minWidth: '120px', visible: true },
+  { key: 'envioStatus', label: 'Envio', minWidth: '100px', visible: true },
+  { key: 'recebimentoClienteStatus', label: 'Recebido (Cli)', minWidth: '80px', visible: true },
+  { key: 'dataVenda', label: 'Data Venda', minWidth: '100px', visible: true },
+  { key: 'dataEnvio', label: 'Data Envio', minWidth: '100px', visible: true },
+  { key: 'dataRecebimento', label: 'Data Receb.', minWidth: '100px', visible: true },
+  { key: 'recebimentoDias', label: 'Dias', minWidth: '60px', isNumeric: true, visible: true },
+  { key: 'pontoEntrega', label: 'Ponto Entrega', minWidth: '100px', visible: true },
+  { key: 'codigoRastreio', label: 'Rastreio', minWidth: '120px', visible: true },
+  { key: 'valorVenda', label: 'Valor Venda', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'freteRecebido', label: 'Frete Rec.', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'valorVendaMaisFrete', label: 'V + F', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'valorCompra', label: 'Vlr Compra', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'fretePago', label: 'Frete Pago', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'comissaoAmazon', label: 'Comissão', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'totalCustos', label: 'Custos Tot.', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'lucro', label: 'Lucro', minWidth: '100px', isNumeric: true, visible: true },
+  { key: 'quantidade', label: 'Qtd', minWidth: '60px', isNumeric: true, visible: true },
+  { key: 'idProduto', label: 'ID Produto', minWidth: '100px', visible: true },
+  { key: 'produto', label: 'Produto', minWidth: '200px', visible: true },
+  { key: 'observacoes', label: 'Observações', minWidth: '200px', visible: true },
 ];
 
 const SalesTable: React.FC<SalesTableProps> = ({ 
@@ -79,9 +81,23 @@ const SalesTable: React.FC<SalesTableProps> = ({
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const [columns, setColumns] = useState<ColumnDef[]>(INITIAL_COLUMNS);
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close column menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnMenuRef.current && !columnMenuRef.current.contains(event.target as Node)) {
+        setShowColumnMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getStatusColor = (status: ShippingStatus) => {
     switch (status) {
+      case ShippingStatus.URGENT: return 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-800 animate-pulse';
       case ShippingStatus.DELIVERED: return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
       case ShippingStatus.SHIPPED: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
       case ShippingStatus.PROCESSING: return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300';
@@ -93,7 +109,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
   };
 
   const isCriticalStatus = (status: ShippingStatus) => {
-    return status === ShippingStatus.RETURNED || status === ShippingStatus.CANCELED;
+    return status === ShippingStatus.RETURNED || status === ShippingStatus.CANCELED || status === ShippingStatus.URGENT;
   };
 
   // --- Filtering & Sorting Logic ---
@@ -234,6 +250,24 @@ const SalesTable: React.FC<SalesTableProps> = ({
     setDraggedColumnIndex(null);
   };
 
+  // --- Column Management Handlers ---
+
+  const toggleColumnVisibility = (key: keyof SaleData) => {
+    setColumns(prev => prev.map(col => 
+      col.key === key ? { ...col, visible: !col.visible } : col
+    ));
+  };
+
+  const moveColumn = (index: number, direction: 'up' | 'down') => {
+    const newColumns = [...columns];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex >= 0 && targetIndex < newColumns.length) {
+      [newColumns[index], newColumns[targetIndex]] = [newColumns[targetIndex], newColumns[index]];
+      setColumns(newColumns);
+    }
+  };
+
   // --- Render Helper ---
 
   const renderCellContent = (sale: SaleData, key: keyof SaleData, isEditing: boolean) => {
@@ -283,6 +317,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
     if (key === 'envioStatus') {
       return (
         <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${getStatusColor(value as ShippingStatus)}`}>
+           {value === ShippingStatus.URGENT && <AlertTriangle size={10} />}
            {value as string}
         </span>
       );
@@ -334,8 +369,11 @@ const SalesTable: React.FC<SalesTableProps> = ({
     return <div className="text-center">{value !== null && value !== undefined ? String(value) : '-'}</div>;
   };
 
+  // Only render visible columns
+  const visibleColumns = columns.filter(col => col.visible);
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors duration-300 relative">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-visible transition-colors duration-300 relative">
       
       {/* Search Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row gap-3 items-center bg-slate-50/50 dark:bg-slate-800/50">
@@ -350,7 +388,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
            />
         </div>
         
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto items-center">
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
@@ -361,6 +399,60 @@ const SalesTable: React.FC<SalesTableProps> = ({
               Limpar
             </button>
           )}
+
+          {/* Column Management Menu */}
+          <div className="relative" ref={columnMenuRef}>
+            <button
+              onClick={() => setShowColumnMenu(!showColumnMenu)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border transition-all shadow-sm ${
+                showColumnMenu 
+                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700' 
+                  : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+              }`}
+            >
+              <Layout size={16} />
+              Colunas
+            </button>
+            
+            {showColumnMenu && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 p-2 max-h-[400px] overflow-y-auto">
+                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 px-2 uppercase tracking-wider">Gerenciar Colunas</h4>
+                <div className="space-y-1">
+                  {columns.map((col, idx) => (
+                    <div key={col.key} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-md group">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={col.visible}
+                          onChange={() => toggleColumnVisibility(col.key)}
+                          className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className={`text-sm ${col.visible ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
+                          {col.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => moveColumn(idx, 'up')}
+                          disabled={idx === 0}
+                          className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                        >
+                          <ArrowUp size={12} />
+                        </button>
+                        <button 
+                          onClick={() => moveColumn(idx, 'down')}
+                          disabled={idx === columns.length - 1}
+                          className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                        >
+                          <ArrowDown size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {setShowHidden && (
             <button
@@ -412,7 +504,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               </th>
 
               {/* DYNAMIC COLUMNS */}
-              {columns.map((col, index) => {
+              {visibleColumns.map((col, index) => {
                  const isActiveSort = sortConfig.key === col.key;
                  
                  return (
@@ -454,7 +546,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
           <tbody>
             {sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={visibleColumns.length + 3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                   <div className="flex flex-col items-center gap-2">
                     <Search className="opacity-20" size={40} />
                     <p>Nenhum resultado encontrado para "{searchTerm}"</p>
@@ -534,7 +626,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     </td>
 
                     {/* DYNAMIC COLUMNS */}
-                    {columns.map((col) => {
+                    {visibleColumns.map((col) => {
                       return (
                         <td 
                           key={col.key} 

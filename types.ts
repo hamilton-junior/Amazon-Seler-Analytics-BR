@@ -29,6 +29,7 @@ export interface SaleData {
 }
 
 export enum ShippingStatus {
+  URGENT = 'Urgente',
   PROCESSING = 'Em Processamento',
   PENDING = 'Pendente',
   SHIPPED = 'Enviado',

@@ -1,3 +1,4 @@
+
 import { SaleData, ShippingStatus } from './types';
 
 export const MOCK_SALES_DATA: SaleData[] = [
@@ -81,7 +82,7 @@ export const MOCK_SALES_DATA: SaleData[] = [
     id: "AMZ-1004",
     nome: "Fernanda Lima",
     cidade: "Belo Horizonte, MG",
-    envioStatus: ShippingStatus.PENDING,
+    envioStatus: ShippingStatus.URGENT,
     recebimentoClienteStatus: false,
     dataVenda: "2023-10-07",
     dataEnvio: null,
@@ -100,7 +101,7 @@ export const MOCK_SALES_DATA: SaleData[] = [
     quantidade: 1,
     idProduto: "B05A3456",
     produto: "Teclado Mecânico",
-    observacoes: "Verificar estoque"
+    observacoes: "Prioridade Alta - Atrasado"
   },
   {
     id: "AMZ-1005",
