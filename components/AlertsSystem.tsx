@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SaleData, AlertRule, AlertOperator, Alert, ShippingStatus } from '../types';
 import { formatCurrency } from '../constants';
-import { Bell, Settings, Trash2, Plus, Mail, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Archive, Check, Filter, Pencil, ArrowUp, ArrowDown, Save, X, AlertCircle } from 'lucide-react';
+import { Bell, Settings, Trash2, Plus, Mail, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Archive, Check, Filter, Pencil, ArrowUp, ArrowDown, Save, X, AlertCircle, ChevronRight, CheckSquare, Square } from 'lucide-react';
 
 interface AlertsSystemProps {
   data: SaleData[];
@@ -53,11 +53,13 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
   // UI State
   const [showConfig, setShowConfig] = useState(false);
   const [viewHistory, setViewHistory] = useState(false);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
   
   // Alerts tracking
   const [readAlertIds, setReadAlertIds] = useState<Set<string>>(new Set());
   const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set());
   const [alertsHistory, setAlertsHistory] = useState<Alert[]>([]);
+  const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(new Set());
 
   // Form State
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
@@ -253,13 +255,70 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
     if (alertToDismiss) {
       setAlertsHistory(prev => [...prev, { ...alertToDismiss, isDismissed: true, timestamp: new Date().toISOString() }]);
       setDismissedAlertIds(prev => new Set(prev).add(alertId));
+      setSelectedAlertIds(prev => {
+        const next = new Set(prev);
+        next.delete(alertId);
+        return next;
+      });
     }
+  };
+
+  const handleBulkDismiss = () => {
+    const alertsToDismiss = currentAlerts.filter(a => selectedAlertIds.has(a.id));
+    if (alertsToDismiss.length === 0) return;
+
+    const timestamp = new Date().toISOString();
+    
+    setAlertsHistory(prev => [
+      ...prev,
+      ...alertsToDismiss.map(a => ({ ...a, isDismissed: true, timestamp }))
+    ]);
+    
+    setDismissedAlertIds(prev => {
+      const next = new Set(prev);
+      selectedAlertIds.forEach(id => next.add(id));
+      return next;
+    });
+    
+    setSelectedAlertIds(new Set());
   };
 
   const handleMarkAllRead = () => {
     const newReadIds = new Set(readAlertIds);
     currentAlerts.forEach(a => newReadIds.add(a.id));
     setReadAlertIds(newReadIds);
+  };
+
+  const toggleGroupExpand = (ruleId: string) => {
+    setExpandedGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(ruleId)) next.delete(ruleId);
+      else next.add(ruleId);
+      return next;
+    });
+  };
+
+  const toggleSelectAlert = (id: string) => {
+    setSelectedAlertIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectGroup = (alertIds: string[]) => {
+    const allSelected = alertIds.every(id => selectedAlertIds.has(id));
+    
+    setSelectedAlertIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        alertIds.forEach(id => next.delete(id));
+      } else {
+        alertIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
   };
 
   // Group Alerts Logic
@@ -275,6 +334,11 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
       }
       grouped[alert.ruleId].count++;
       grouped[alert.ruleId].alerts.push(alert);
+    });
+
+    // Sort alerts within groups by timestamp descending
+    Object.values(grouped).forEach(g => {
+        g.alerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     });
 
     return Object.values(grouped);
@@ -345,13 +409,13 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
           
           <div className="flex bg-slate-200 dark:bg-slate-600 rounded-md p-1 ml-4">
              <button 
-               onClick={() => setViewHistory(false)}
+               onClick={() => { setViewHistory(false); setSelectedAlertIds(new Set()); }}
                className={`px-3 py-1 text-xs rounded-sm transition-all ${!viewHistory ? 'bg-white dark:bg-slate-500 shadow-sm font-medium' : 'text-slate-500 dark:text-slate-300'}`}
              >
                Ativos
              </button>
              <button 
-               onClick={() => setViewHistory(true)}
+               onClick={() => { setViewHistory(true); setSelectedAlertIds(new Set()); }}
                className={`px-3 py-1 text-xs rounded-sm transition-all ${viewHistory ? 'bg-white dark:bg-slate-500 shadow-sm font-medium' : 'text-slate-500 dark:text-slate-300'}`}
              >
                Histórico
@@ -377,6 +441,21 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
           </button>
         </div>
       </div>
+
+      {/* Bulk Action Bar (Active only) */}
+      {selectedAlertIds.size > 0 && !viewHistory && (
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 flex justify-between items-center border-b border-indigo-100 dark:border-indigo-800 animate-in slide-in-from-top-2">
+          <span className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
+            {selectedAlertIds.size} alerta(s) selecionado(s)
+          </span>
+          <button 
+            onClick={handleBulkDismiss}
+            className="text-sm flex items-center gap-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm"
+          >
+            <Archive size={14} /> Arquivar Selecionados
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Rule Configuration Panel */}
       {(showConfig || editingRuleId) && (
@@ -532,7 +611,7 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
       )}
 
       {/* Alerts Display Area */}
-      <div className="max-h-60 overflow-y-auto custom-scrollbar">
+      <div className="max-h-80 overflow-y-auto custom-scrollbar">
         {viewHistory ? (
            // HISTORY VIEW
            <div className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -551,7 +630,7 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
              )}
            </div>
         ) : (
-           // ACTIVE VIEW (GROUPED)
+           // ACTIVE VIEW (GROUPED COLLAPSIBLE)
            <div>
              {groupedAlerts.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 dark:text-slate-500">
@@ -559,32 +638,70 @@ const AlertsSystem: React.FC<AlertsSystemProps> = ({ data }) => {
                   <p>Nenhum alerta ativo.</p>
                 </div>
              ) : (
-               groupedAlerts.map((group, idx) => (
-                 <div key={idx} className={`border-b border-slate-100 dark:border-slate-700 last:border-0`}>
-                    {/* Group Header */}
-                    <div className={`px-4 py-2 flex justify-between items-center ${getSeverityBg(group.severity)}`}>
-                       <div className="flex items-center gap-2">
-                         {getSeverityIcon(group.severity)}
-                         <span className="font-semibold text-sm text-slate-800 dark:text-white">{group.ruleName}</span>
-                         <span className="bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded-full text-xs font-bold shadow-sm">{group.count}</span>
-                       </div>
-                    </div>
-                    {/* Items */}
-                    <div className="bg-white dark:bg-slate-800">
-                      {group.alerts.map(alert => (
-                        <div key={alert.id} className={`px-4 py-2 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-50 dark:border-slate-700/50 last:border-0 ${!alert.isRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
-                           <div className="text-sm text-slate-600 dark:text-slate-300">
-                              {alert.message}
-                              {!alert.isRead && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-blue-500"></span>}
+               groupedAlerts.map((group, idx) => {
+                 const isExpanded = expandedGroupIds.has(group.alerts[0].ruleId);
+                 const latestAlert = group.alerts[0]; // Already sorted by timestamp desc
+                 const groupAlertIds = group.alerts.map(a => a.id);
+                 const allSelected = groupAlertIds.length > 0 && groupAlertIds.every(id => selectedAlertIds.has(id));
+                 const someSelected = groupAlertIds.some(id => selectedAlertIds.has(id));
+
+                 return (
+                   <div key={group.alerts[0].ruleId} className={`border-b border-slate-100 dark:border-slate-700 last:border-0`}>
+                      {/* Group Header */}
+                      <div 
+                        className={`px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${getSeverityBg(group.severity)}`}
+                        onClick={() => toggleGroupExpand(group.alerts[0].ruleId)}
+                      >
+                         <div className="flex items-center gap-3 overflow-hidden">
+                           <div onClick={(e) => { e.stopPropagation(); toggleSelectGroup(groupAlertIds); }}>
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${allSelected ? 'bg-indigo-600 border-indigo-600' : someSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-500'}`}>
+                                {allSelected && <Check size={12} className="text-white" />}
+                                {someSelected && !allSelected && <div className="w-2 h-0.5 bg-white rounded-full" />}
+                              </div>
                            </div>
-                           <button onClick={() => handleDismiss(alert.id)} className="text-slate-400 hover:text-slate-600" title="Arquivar">
-                             <Archive size={14} />
-                           </button>
+                           
+                           <div className="text-slate-500 dark:text-slate-400">
+                             {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                           </div>
+                           
+                           {getSeverityIcon(group.severity)}
+                           
+                           <div className="flex items-baseline gap-2 overflow-hidden">
+                              <span className="font-semibold text-sm text-slate-800 dark:text-white whitespace-nowrap">{group.ruleName}</span>
+                              <span className="bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded-full text-xs font-bold shadow-sm">{group.count}</span>
+                              <span className="text-xs text-slate-400 truncate hidden sm:inline-block">
+                                 - {latestAlert.message}
+                              </span>
+                           </div>
+                         </div>
+                      </div>
+                      
+                      {/* Expanded Items */}
+                      {isExpanded && (
+                        <div className="bg-white dark:bg-slate-800">
+                          {group.alerts.map(alert => (
+                            <div key={alert.id} className={`pl-12 pr-4 py-2 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-50 dark:border-slate-700/50 last:border-0 ${!alert.isRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
+                               <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                 <div onClick={() => toggleSelectAlert(alert.id)} className="cursor-pointer">
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedAlertIds.has(alert.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-500'}`}>
+                                      {selectedAlertIds.has(alert.id) && <Check size={12} className="text-white" />}
+                                    </div>
+                                 </div>
+                                 <div className="text-sm text-slate-600 dark:text-slate-300 truncate">
+                                    {alert.message}
+                                    {!alert.isRead && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-blue-500"></span>}
+                                 </div>
+                               </div>
+                               <button onClick={() => handleDismiss(alert.id)} className="text-slate-400 hover:text-slate-600 ml-2" title="Arquivar">
+                                 <Archive size={14} />
+                               </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                 </div>
-               ))
+                      )}
+                   </div>
+                 );
+               })
              )}
            </div>
         )}

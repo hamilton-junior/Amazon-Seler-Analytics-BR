@@ -27,6 +27,14 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({ filters, setFilters, showHi
     });
   };
 
+  const clearDates = () => {
+    setFilters(prev => ({
+      ...prev,
+      dateStart: '',
+      dateEnd: ''
+    }));
+  };
+
   const setDateRange = (range: 'today' | '7days' | '30days' | 'thisMonth') => {
     const end = new Date();
     const start = new Date();
@@ -210,6 +218,16 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({ filters, setFilters, showHi
         >
           Este Mês
         </button>
+        
+        {(filters.dateStart || filters.dateEnd) && (
+          <button
+            onClick={clearDates}
+            className="ml-auto flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+            title="Limpar apenas filtros de data"
+          >
+            <X size={12} /> Limpar Datas
+          </button>
+        )}
       </div>
     </div>
   );
