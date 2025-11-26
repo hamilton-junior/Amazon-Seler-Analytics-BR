@@ -9,7 +9,7 @@ import AlertsSystem from './components/AlertsSystem';
 import SalesFilters from './components/SalesFilters';
 import SaleDetailModal from './components/SaleDetailModal';
 import ProductHistoryModal from './components/ProductHistoryModal';
-import { ShoppingCart, Moon, Sun } from 'lucide-react';
+import { ShoppingCart, Moon, Sun, CheckSquare, Square, EyeOff, Eye, Check } from 'lucide-react';
 
 const App: React.FC = () => {
   // Theme State
@@ -124,18 +124,33 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Bulk Actions ---
+
   const handleBulkHide = () => {
-    if (window.confirm(`Deseja esconder ${selectedIds.size} vendas selecionadas?`)) {
-      setSalesData(prevData => prevData.map(sale => 
-        selectedIds.has(sale.id) ? { ...sale, hidden: true } : sale
-      ));
-      setSelectedIds(new Set());
-    }
+    // No confirmation needed per user request preference for speed
+    setSalesData(prevData => prevData.map(sale => 
+      selectedIds.has(sale.id) ? { ...sale, hidden: true } : sale
+    ));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkShow = () => {
+    setSalesData(prevData => prevData.map(sale => 
+      selectedIds.has(sale.id) ? { ...sale, hidden: false } : sale
+    ));
+    setSelectedIds(new Set());
   };
 
   const handleBulkMark = () => {
     setSalesData(prevData => prevData.map(sale => 
       selectedIds.has(sale.id) ? { ...sale, isMarked: true } : sale
+    ));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkUnmark = () => {
+    setSalesData(prevData => prevData.map(sale => 
+      selectedIds.has(sale.id) ? { ...sale, isMarked: false } : sale
     ));
     setSelectedIds(new Set());
   };
@@ -246,13 +261,52 @@ const App: React.FC = () => {
 
             {/* Detailed Data Table */}
             <div className="mb-4">
-              <div className="flex justify-between items-end mb-2">
+              <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-3 gap-3">
                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">Detalhamento de Vendas</h2>
+                 
                  {selectedIds.size > 0 && (
-                   <div className="flex gap-2 animate-in fade-in slide-in-from-right-4">
-                     <span className="text-xs text-slate-500 self-center mr-2">{selectedIds.size} selecionados</span>
-                     <button onClick={handleBulkMark} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-xs hover:bg-indigo-200">Marcar</button>
-                     <button onClick={handleBulkHide} className="px-3 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300">Esconder</button>
+                   <div className="flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-right-4 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                     <span className="text-xs text-slate-500 font-medium px-2 border-r border-slate-200 dark:border-slate-700 mr-1">
+                       {selectedIds.size} selecionados
+                     </span>
+                     
+                     {/* Marking Actions */}
+                     <div className="flex gap-1">
+                       <button 
+                          onClick={handleBulkMark} 
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-100 dark:border-blue-800"
+                          title="Adicionar marcação de verificado"
+                        >
+                          <CheckSquare size={14} /> Marcar
+                        </button>
+                        <button 
+                          onClick={handleBulkUnmark} 
+                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded text-xs hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600"
+                          title="Remover marcação"
+                        >
+                          <Square size={14} /> Desmarcar
+                        </button>
+                     </div>
+
+                     <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+
+                     {/* Visibility Actions */}
+                     <div className="flex gap-1">
+                       <button 
+                          onClick={handleBulkHide} 
+                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded text-xs hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-300 transition-colors border border-slate-200 dark:border-slate-600"
+                          title="Ocultar da lista principal"
+                        >
+                          <EyeOff size={14} /> Esconder
+                        </button>
+                        <button 
+                          onClick={handleBulkShow} 
+                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded text-xs hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-300 transition-colors border border-slate-200 dark:border-slate-600"
+                          title="Exibir itens ocultos"
+                        >
+                          <Eye size={14} /> Mostrar
+                        </button>
+                     </div>
                    </div>
                  )}
               </div>
